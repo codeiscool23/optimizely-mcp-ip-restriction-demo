@@ -265,7 +265,14 @@ async function egressIp() {
 // ----------------- HTTP API -----------------
 const app = express();
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
+// Always serve fresh UI — this is an iterated demo app, stale cached JS causes confusion.
+app.use(
+  express.static(path.join(__dirname, "public"), {
+    etag: false,
+    lastModified: false,
+    setHeaders: (res) => res.setHeader("Cache-Control", "no-store"),
+  })
+);
 
 app.get("/api/ip", async (_req, res) => res.json({ ip: await egressIp() }));
 
