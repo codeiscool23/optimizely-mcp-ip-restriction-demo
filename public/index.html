@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Optimizely MCP · IP Restriction Demo</title>
+<style>
+  :root {
+    --bg: #0b1020; --panel: #141a2e; --panel2: #1b2238; --line: #2a3350;
+    --text: #e6eaf2; --muted: #93a0bd; --accent: #6aa0ff;
+    --ok: #2ecc71; --okbg: #11321f; --bad: #ff5d6c; --badbg: #341219; --warn: #f4c145;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+         background: radial-gradient(1200px 600px at 50% -10%, #16203c, var(--bg)); color: var(--text); min-height: 100vh; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 28px 20px 60px; }
+  h1 { font-size: 22px; margin: 0 0 2px; }
+  .sub { color: var(--muted); margin: 0 0 22px; font-size: 14px; }
+
+  .ipbar { display: flex; align-items: center; gap: 16px; background: var(--panel);
+           border: 1px solid var(--line); border-radius: 14px; padding: 16px 20px; margin-bottom: 22px; }
+  .ipbar .lab { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+  .ip { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .5px; }
+  .ip.changed { color: var(--warn); }
+  .reload { margin-left: 6px; }
+  .baseline { margin-left: auto; text-align: right; color: var(--muted); font-size: 12px; }
+  .baseline b { color: var(--text); }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+  .card h2 { font-size: 16px; margin: 0 0 2px; display: flex; align-items: center; gap: 9px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #55607d; flex: none; }
+  .dot.on { background: var(--ok); } .dot.off { background: #55607d; }
+  .url { color: var(--muted); font-size: 12px; word-break: break-all; margin: 0 0 14px; }
+  .row { display: flex; gap: 9px; margin-bottom: 14px; flex-wrap: wrap; }
+  button { font: inherit; font-weight: 600; border: 1px solid var(--line); background: var(--panel2);
+           color: var(--text); padding: 9px 14px; border-radius: 10px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #08122c; border-color: transparent; }
+  button.test { background: #1d2b27; border-color: #2f6f52; color: #c9ffe2; }
+  button.sm { padding: 7px 11px; font-size: 13px; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .meta { font-size: 12px; color: var(--muted); margin-bottom: 12px; min-height: 16px; }
+
+  .result { border-radius: 12px; padding: 12px 14px; font-size: 13px; border: 1px solid var(--line);
+            background: var(--panel2); display: none; margin-bottom: 12px; }
+  .result.show { display: block; }
+  .result.ok { background: var(--okbg); border-color: #1e6b40; }
+  .result.bad { background: var(--badbg); border-color: #7d2630; }
+  .result .hd { font-weight: 700; font-size: 14px; display: flex; justify-content: space-between; gap: 8px; }
+  .result .hd .ms { color: var(--muted); font-weight: 500; }
+  .tools { margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: #0c1830; border: 1px solid var(--line); padding: 3px 8px; border-radius: 999px; font-size: 11px; }
+  pre { margin: 8px 0 0; white-space: pre-wrap; word-break: break-word; font-size: 12px;
+        color: #ffd9dd; max-height: 200px; overflow: auto; }
+  .ok pre { color: #cfeede; }
+
+  .calltool { border-top: 1px dashed var(--line); padding-top: 12px; margin-top: 6px; }
+  .calltool .lab { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 7px; }
+  select, textarea { width: 100%; font: inherit; background: #0c1326; color: var(--text);
+                     border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; }
+  textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; min-height: 70px; resize: vertical; margin-top: 8px; }
+  .tooldesc { color: var(--muted); font-size: 11px; margin: 6px 2px 0; min-height: 14px; }
+  .callrow { display: flex; gap: 9px; align-items: center; margin-top: 8px; }
+  .calltool[disabled] { opacity: .5; pointer-events: none; }
+
+  .log { margin-top: 12px; font-size: 11px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 8px; }
+  .log div { padding: 1px 0; }
+  .hint { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px;
+          margin-top: 22px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+  .hint b { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Optimizely MCP · IP Restriction Demo</h1>
+  <p class="sub">Authenticate each server once on a trusted network, then switch to your hotspot and re-test to prove the IP allow-list is enforced.</p>
+
+  <div class="ipbar">
+    <div>
+      <div class="lab">Current egress IP</div>
+      <div class="ip" id="ip">…</div>
+    </div>
+    <button class="sm reload" id="reload">↻ Reload IP</button>
+    <div class="baseline" id="baseline"></div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="hint">
+    <b>How to run the demo:</b> 1) On your trusted Wi-Fi, <b>Connect</b> each card and complete the login.
+    2) <b>Test connection</b> — both go green and load their tool lists. Optionally <b>Call</b> a tool to show live data.
+    3) Switch your machine to the <b>mobile hotspot</b>, then click <b>↻ Reload IP</b> — the IP turns amber (baseline stays fixed).
+    4) <b>Test connection</b> / <b>Call tool</b> again — same tokens, new IP, so a restricted server now returns an auth/forbidden error.
+  </div>
+</div>
+
+<script>
+const SERVERS = {
+  cms: { url: "https://cms.mcp.opal.optimizely.com/mcp" },
+  exp: { url: "https://exp.mcp.opal.optimizely.com/mcp" },
+};
+let baselineIp = null;
+const toolDefs = {}; // key -> [{name, description, inputSchema}]
+
+const grid = document.getElementById("grid");
+for (const key of Object.keys(SERVERS)) {
+  const c = document.createElement("div");
+  c.className = "card";
+  c.innerHTML = `
+    <h2><span class="dot off" id="dot-${key}"></span><span id="lbl-${key}">${key.toUpperCase()}</span></h2>
+    <p class="url">${SERVERS[key].url}</p>
+    <div class="row">
+      <button class="primary" id="conn-${key}">Connect</button>
+      <button class="test" id="test-${key}">Test connection</button>
+      <button id="disc-${key}">Disconnect</button>
+    </div>
+    <div class="meta" id="meta-${key}">Not connected.</div>
+    <div class="result" id="res-${key}"></div>
+    <div class="calltool" id="ct-${key}" disabled>
+      <div class="lab">Call a tool</div>
+      <select id="tools-${key}"><option>— run Test connection to load tools —</option></select>
+      <div class="tooldesc" id="td-${key}"></div>
+      <textarea id="args-${key}" spellcheck="false">{}</textarea>
+      <div class="callrow">
+        <button class="sm primary" id="call-${key}">Call tool</button>
+        <span class="tooldesc" id="callnote-${key}"></span>
+      </div>
+      <div class="result" id="callres-${key}" style="margin-top:10px"></div>
+    </div>
+    <div class="log" id="log-${key}"></div>`;
+  grid.appendChild(c);
+  document.getElementById(`conn-${key}`).onclick = () => connect(key);
+  document.getElementById(`test-${key}`).onclick = () => test(key);
+  document.getElementById(`disc-${key}`).onclick = () => disconnect(key);
+  document.getElementById(`call-${key}`).onclick = () => doCall(key);
+  document.getElementById(`tools-${key}`).onchange = () => fillArgs(key);
+}
+
+function log(key, msg) {
+  const el = document.getElementById(`log-${key}`);
+  const t = new Date().toLocaleTimeString();
+  el.innerHTML = `<div>${t} — ${msg}</div>` + el.innerHTML;
+}
+
+async function refreshIp() {
+  const el = document.getElementById("ip");
+  try {
+    const { ip } = await (await fetch("/api/ip")).json();
+    if (!ip) { el.textContent = "(no network)"; return; }
+    if (baselineIp === null) {
+      baselineIp = ip;
+      document.getElementById("baseline").innerHTML = "baseline: <b>" + ip + "</b>";
+    }
+    el.textContent = ip;
+    el.classList.toggle("changed", ip !== baselineIp);
+  } catch { el.textContent = "(no network)"; }
+}
+
+async function refreshState() {
+  const st = await (await fetch("/api/state")).json();
+  for (const key of Object.keys(st)) {
+    document.getElementById(`lbl-${key}`).textContent = st[key].label;
+    document.getElementById(`dot-${key}`).className = "dot " + (st[key].connected ? "on" : "off");
+    const meta = document.getElementById(`meta-${key}`);
+    meta.textContent = st[key].connected
+      ? `Connected from ${st[key].connectedIp || "?"} · ${new Date(st[key].connectedAt).toLocaleTimeString()}`
+      : "Not connected.";
+  }
+}
+
+async function connect(key) {
+  log(key, "starting OAuth…");
+  const r = await (await fetch(`/api/${key}/login`)).json();
+  if (r.error) { log(key, "login error: " + r.error); return; }
+  window.open(r.authUrl, "oauth", "width=520,height=720");
+}
+
+async function disconnect(key) {
+  await fetch(`/api/${key}/disconnect`, { method: "POST" });
+  document.getElementById(`res-${key}`).className = "result";
+  document.getElementById(`ct-${key}`).setAttribute("disabled", "");
+  log(key, "disconnected (token cleared)");
+  refreshState();
+}
+
+async function test(key) {
+  const btn = document.getElementById(`test-${key}`);
+  const res = document.getElementById(`res-${key}`);
+  btn.disabled = true; btn.textContent = "Testing…";
+  log(key, "initialize → tools/list…");
+  try {
+    const r = await (await fetch(`/api/${key}/test`, { method: "POST" })).json();
+    res.className = "result show " + (r.ok ? "ok" : "bad");
+    if (r.ok) {
+      res.innerHTML = `<div class="hd"><span>✅ Reachable · HTTP ${r.httpStatus}</span><span class="ms">${r.ms} ms · via ${r.egressIp || "?"}</span></div>
+        <div class="tools">${r.tools.map(t => `<span class="chip">${t}</span>`).join("") || "<span class='chip'>no tools</span>"}</div>`;
+      log(key, `OK — ${r.tools.length} tools`);
+      populateTools(key, r.toolDefs || []);
+    } else {
+      res.innerHTML = errHtml(r);
+      log(key, `FAIL @ ${r.stage} ${r.httpStatus || ""}`);
+    }
+  } catch (e) {
+    res.className = "result show bad";
+    res.innerHTML = `<pre>${String(e)}</pre>`;
+  } finally {
+    btn.disabled = false; btn.textContent = "Test connection";
+  }
+}
+
+function errHtml(r) {
+  return `<div class="hd"><span>⛔ Blocked / failed${r.httpStatus ? " · HTTP " + r.httpStatus : ""}</span><span class="ms">${r.ms ? r.ms + " ms · " : ""}via ${r.egressIp || "?"}</span></div>
+    <div style="margin-top:4px;color:#ffb3ba">stage: ${r.stage || "?"}</div>
+    <pre>${(r.error || "").toString().slice(0, 800)}</pre>`;
+}
+
+// ---- Call tool ----
+function populateTools(key, defs) {
+  toolDefs[key] = defs;
+  const sel = document.getElementById(`tools-${key}`);
+  sel.innerHTML = defs.length
+    ? defs.map(d => `<option value="${d.name}">${d.name}</option>`).join("")
+    : `<option>— no tools exposed —</option>`;
+  document.getElementById(`ct-${key}`).toggleAttribute("disabled", defs.length === 0);
+  if (defs.length) fillArgs(key);
+}
+
+function sampleFor(p) {
+  if (!p) return "";
+  if (p.default !== undefined) return p.default;
+  if (p.example !== undefined) return p.example;
+  if (Array.isArray(p.examples) && p.examples.length) return p.examples[0];
+  if (Array.isArray(p.enum) && p.enum.length) return p.enum[0];
+  switch (p.type) {
+    case "string": return "";
+    case "number": case "integer": return 0;
+    case "boolean": return false;
+    case "array": return [];
+    case "object": return {};
+    default: return "";
+  }
+}
+
+// simplest possible request: only the required fields, minimal values
+function minimalArgs(schema) {
+  if (!schema || !schema.properties) return {};
+  const req = schema.required || [];
+  const out = {};
+  for (const k of req) out[k] = sampleFor(schema.properties[k]);
+  return out;
+}
+
+function fillArgs(key) {
+  const defs = toolDefs[key] || [];
+  const name = document.getElementById(`tools-${key}`).value;
+  const def = defs.find(d => d.name === name);
+  document.getElementById(`td-${key}`).textContent = def?.description?.slice(0, 200) || "";
+  const schema = def?.inputSchema;
+  const req = (schema && schema.required) || [];
+  document.getElementById(`callnote-${key}`).textContent =
+    req.length ? `required: ${req.join(", ")}` : "no required arguments";
+  document.getElementById(`args-${key}`).value = JSON.stringify(minimalArgs(schema), null, 2);
+}
+
+async function doCall(key) {
+  const btn = document.getElementById(`call-${key}`);
+  const res = document.getElementById(`callres-${key}`);
+  const tool = document.getElementById(`tools-${key}`).value;
+  let args;
+  try { args = JSON.parse(document.getElementById(`args-${key}`).value || "{}"); }
+  catch (e) { res.className = "result show bad"; res.innerHTML = `<pre>Invalid JSON in arguments: ${e}</pre>`; return; }
+  btn.disabled = true; btn.textContent = "Calling…";
+  log(key, `tools/call ${tool}…`);
+  try {
+    const r = await (await fetch(`/api/${key}/call`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tool, args }),
+    })).json();
+    res.className = "result show " + (r.ok ? "ok" : "bad");
+    if (r.ok) {
+      res.innerHTML = `<div class="hd"><span>✅ ${tool} · HTTP ${r.httpStatus}</span><span class="ms">${r.ms} ms · via ${r.egressIp || "?"}</span></div>
+        <pre>${JSON.stringify(r.result, null, 2).slice(0, 1500)}</pre>`;
+      log(key, `called ${tool} OK`);
+    } else {
+      res.innerHTML = errHtml(r);
+      log(key, `call FAIL @ ${r.stage} ${r.httpStatus || ""}`);
+    }
+  } catch (e) {
+    res.className = "result show bad"; res.innerHTML = `<pre>${String(e)}</pre>`;
+  } finally {
+    btn.disabled = false; btn.textContent = "Call tool";
+  }
+}
+
+document.getElementById("reload").onclick = refreshIp;
+window.addEventListener("message", (e) => { if (e.data === "oauth-done") refreshState(); });
+refreshIp(); refreshState();
+setInterval(refreshState, 8000); // IP is manual-reload only; baseline stays fixed
+</script>
+</body>
+</html>

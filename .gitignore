@@ -1,0 +1,9 @@
+# Dependencies
+node_modules/
+
+# Local OAuth state — contains client secrets, access/refresh tokens. NEVER commit.
+.mcp-demo-state.json
+
+# Logs / OS cruft
+*.log
+.DS_Store
