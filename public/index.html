@@ -104,6 +104,11 @@ const SERVERS = {
 let baselineIp = null;
 const toolDefs = {}; // key -> [{name, description, inputSchema}]
 
+// Per-tool argument presets — override the schema-derived default for specific tools.
+const TOOL_PRESETS = {
+  graph_content_GraphQL_executor_tool: { query: "{ _Content { total } }" },
+};
+
 const grid = document.getElementById("grid");
 for (const key of Object.keys(SERVERS)) {
   const c = document.createElement("div");
@@ -266,7 +271,9 @@ function fillArgs(key) {
   const req = (schema && schema.required) || [];
   document.getElementById(`callnote-${key}`).textContent =
     req.length ? `required: ${req.join(", ")}` : "no required arguments";
-  document.getElementById(`args-${key}`).value = JSON.stringify(minimalArgs(schema), null, 2);
+  const preset = TOOL_PRESETS[name];
+  document.getElementById(`args-${key}`).value =
+    JSON.stringify(preset !== undefined ? preset : minimalArgs(schema), null, 2);
 }
 
 async function doCall(key) {
