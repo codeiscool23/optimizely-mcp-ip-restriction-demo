@@ -107,6 +107,7 @@ const toolDefs = {}; // key -> [{name, description, inputSchema}]
 // Per-tool argument presets — override the schema-derived default for specific tools.
 const TOOL_PRESETS = {
   graph_content_GraphQL_executor_tool: { query: "{ _Content { total } }" },
+  EXP_summarize_test_result: { experiment_id: "5568013362003968" },
 };
 
 const grid = document.getElementById("grid");
