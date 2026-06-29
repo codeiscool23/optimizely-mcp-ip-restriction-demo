@@ -98,8 +98,8 @@
 
 <script>
 const SERVERS = {
-  cms: { url: "https://cms.mcp.opal.optimizely.com/mcp" },
-  exp: { url: "https://exp.mcp.opal.optimizely.com/mcp" },
+  cms: { url: "https://cms.mcp.opal.optimizely.com/mcp", defaultTool: "CMS_list_display_templates" },
+  exp: { url: "https://exp.mcp.opal.optimizely.com/mcp", defaultTool: "EXP_summarize_test_result" },
 };
 let baselineIp = null;
 const toolDefs = {}; // key -> [{name, description, inputSchema}]
@@ -220,9 +220,14 @@ function errHtml(r) {
 function populateTools(key, defs) {
   toolDefs[key] = defs;
   const sel = document.getElementById(`tools-${key}`);
+  // Surface the preferred default tool first, then the rest selectable below it.
+  const pref = SERVERS[key].defaultTool;
+  const ordered = defs.slice().sort((a, b) =>
+    (a.name === pref ? -1 : 0) - (b.name === pref ? -1 : 0));
   sel.innerHTML = defs.length
-    ? defs.map(d => `<option value="${d.name}">${d.name}</option>`).join("")
+    ? ordered.map(d => `<option value="${d.name}">${d.name}</option>`).join("")
     : `<option>— no tools exposed —</option>`;
+  if (defs.some(d => d.name === pref)) sel.value = pref;
   document.getElementById(`ct-${key}`).toggleAttribute("disabled", defs.length === 0);
   if (defs.length) fillArgs(key);
 }
